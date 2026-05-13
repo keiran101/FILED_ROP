@@ -1,0 +1,11 @@
+services:
+  filedrop:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "1158:1158"
+    volumes:
+      - ./uploads:/app/uploads
+      - ./logs:/app/logs
+    env_file:
+      - .env

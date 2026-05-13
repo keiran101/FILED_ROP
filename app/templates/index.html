@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta id="app-cfg" data-max-mb="{{ max_mb }}" data-has-bypass="{{ 'true' if has_bypass else 'false' }}">
+  <title>FileDrop</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #f5f5f5;
+      --card: #ffffff;
+      --border: #e0e0e0;
+      --text: #1a1a1a;
+      --muted: #999;
+      --blue: #1d6ff3;
+      --blue-light: #eff4ff;
+      --red: #dc2626;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 40px 16px 60px;
+    }
+
+    .wrap { max-width: 640px; margin: 0 auto; }
+
+    /* Header */
+    header { margin-bottom: 28px; }
+    h1 { font-size: 1.15rem; font-weight: 700; letter-spacing: -0.01em; }
+    .sub { font-size: 0.78rem; color: var(--muted); margin-top: 3px; }
+
+    /* Drop zone */
+    .drop {
+      border: 2px dashed var(--border);
+      border-radius: 12px;
+      padding: 52px 24px;
+      text-align: center;
+      background: var(--card);
+      cursor: pointer;
+      transition: border-color 0.12s, background 0.12s;
+      user-select: none;
+    }
+    .drop.over { border-color: var(--blue); background: var(--blue-light); }
+    #file-input { display: none; }
+
+    .drop-icon {
+      width: 44px; height: 44px; margin: 0 auto 14px;
+      color: #bbb;
+    }
+    .drop p { font-size: 0.9rem; color: var(--muted); }
+    .drop .pick { color: var(--blue); cursor: pointer; }
+    .drop .pick:hover { text-decoration: underline; }
+    .drop small { display: block; margin-top: 5px; font-size: 0.73rem; color: #bbb; }
+
+    /* Upload progress */
+    .prog-list { margin-top: 10px; display: flex; flex-direction: column; gap: 6px; }
+    .prog-item {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 8px; padding: 10px 14px;
+    }
+    .prog-header { display: flex; align-items: center; gap: 8px; margin-bottom: 7px; }
+    .prog-name { font-size: 0.82rem; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .prog-cancel {
+      flex-shrink: 0; width: 18px; height: 18px; border-radius: 50%;
+      border: none; background: none; cursor: pointer; color: var(--muted);
+      font-size: 0.85rem; line-height: 1; padding: 0; display: flex; align-items: center; justify-content: center;
+    }
+    .prog-cancel:hover { background: var(--bg); color: var(--red); }
+    .prog-track { height: 3px; background: var(--border); border-radius: 2px; overflow: hidden; }
+    .prog-fill { height: 100%; background: var(--blue); width: 0; transition: width 0.1s linear; }
+
+    /* File list */
+    .file-section { margin-top: 28px; }
+    .sec-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px; }
+    .sec-label { font-size: 0.68rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; }
+    .sec-count { font-size: 0.73rem; color: var(--muted); }
+
+    .file-list { display: flex; flex-direction: column; gap: 2px; }
+    .file-row {
+      display: flex; align-items: center; gap: 10px;
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 8px; padding: 9px 14px;
+    }
+    .file-ico { font-size: 1.05rem; flex-shrink: 0; line-height: 1; }
+    .file-name { flex: 1; font-size: 0.875rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+    .file-size { font-size: 0.73rem; color: var(--muted); flex-shrink: 0; }
+    .dl-btn, .del-btn, .pin-btn {
+      flex-shrink: 0; padding: 4px 10px; font-size: 0.77rem;
+      border-radius: 5px; border: 1px solid var(--border);
+      cursor: pointer; background: none; color: var(--text);
+      text-decoration: none; display: inline-block; line-height: 1.5;
+    }
+    .dl-btn:hover { background: var(--bg); }
+    .del-btn { color: var(--red); border-color: transparent; }
+    .del-btn:hover { background: #fef2f2; }
+    .pin-btn { color: var(--muted); }
+    .pin-btn:hover { background: var(--bg); }
+    .pin-btn.on { color: var(--blue); border-color: var(--blue); background: var(--blue-light); }
+
+    .empty { text-align: center; padding: 36px; color: var(--muted); font-size: 0.85rem; border: 1px solid var(--border); border-radius: 8px; background: var(--card); }
+
+    /* Toast */
+    .toast {
+      position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
+      background: #1c1c1c; color: #fff; padding: 9px 18px;
+      border-radius: 8px; font-size: 0.83rem; white-space: nowrap;
+      z-index: 300; pointer-events: none;
+      animation: toast-out 2.8s forwards;
+    }
+    @keyframes toast-out { 0%,70%{opacity:1} 100%{opacity:0} }
+
+    /* Password modal */
+    .modal-bg {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.35);
+      display: flex; align-items: center; justify-content: center; z-index: 200;
+    }
+    .modal-box {
+      background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+      padding: 24px; width: 320px; max-width: 90vw;
+    }
+    .modal-box h3 { font-size: 0.95rem; font-weight: 600; margin-bottom: 6px; }
+    .modal-box p { font-size: 0.8rem; color: var(--muted); margin-bottom: 16px; line-height: 1.5; }
+    .modal-box input[type=password] {
+      width: 100%; padding: 8px 10px; border: 1px solid var(--border);
+      border-radius: 6px; font-size: 0.875rem; outline: none; margin-bottom: 14px;
+    }
+    .modal-box input[type=password]:focus { border-color: var(--blue); }
+    .modal-btns { display: flex; gap: 8px; justify-content: flex-end; }
+    .modal-btns button {
+      padding: 6px 16px; border-radius: 6px; border: 1px solid var(--border);
+      cursor: pointer; font-size: 0.82rem; background: none; color: var(--text);
+    }
+    .modal-btns .primary { background: var(--blue); color: #fff; border-color: var(--blue); }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>FileDrop</h1>
+    <p class="sub">局域网文件快传 · 打开即用</p>
+  </header>
+
+  <div class="drop" id="drop">
+    <input type="file" id="file-input" multiple>
+    <svg class="drop-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.4">
+      <path stroke-linecap="round" stroke-linejoin="round"
+        d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 7.5m0 0L7.5 12M12 7.5v9"/>
+    </svg>
+    <p>拖拽文件到此处，或 <span class="pick" id="pick">点击选择</span></p>
+    <small>支持多文件 · 最大 {{ max_mb }}MB / 个</small>
+  </div>
+
+  <div class="prog-list" id="prog-list"></div>
+
+  <div class="file-section">
+    <div class="sec-head">
+      <span class="sec-label">文件列表</span>
+      <span class="sec-count" id="count"></span>
+    </div>
+    <div class="file-list" id="file-list">
+      <div class="empty">暂无文件</div>
+    </div>
+  </div>
+</div>
+
+<!-- 密码弹窗 -->
+<div class="modal-bg" id="pwd-modal" style="display:none">
+  <div class="modal-box">
+    <h3>需要密码</h3>
+    <p id="pwd-msg"></p>
+    <input type="password" id="pwd-input" placeholder="输入密码" autocomplete="off">
+    <div class="modal-btns">
+      <button id="pwd-cancel">取消</button>
+      <button id="pwd-ok" class="primary">确认上传</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  const drop = document.getElementById('drop');
+  const input = document.getElementById('file-input');
+  const progList = document.getElementById('prog-list');
+  const fileList = document.getElementById('file-list');
+  const countEl = document.getElementById('count');
+
+  // Open file picker
+  document.getElementById('pick').addEventListener('click', function (e) {
+    e.stopPropagation();
+    input.click();
+  });
+  drop.addEventListener('click', function () { input.click(); });
+  input.addEventListener('change', function () {
+    uploadFiles([].slice.call(input.files));
+    input.value = '';
+  });
+
+  // Drag and drop
+  drop.addEventListener('dragover', function (e) {
+    e.preventDefault();
+    drop.classList.add('over');
+  });
+  drop.addEventListener('dragleave', function (e) {
+    if (!drop.contains(e.relatedTarget)) drop.classList.remove('over');
+  });
+  drop.addEventListener('drop', function (e) {
+    e.preventDefault();
+    drop.classList.remove('over');
+    uploadFiles([].slice.call(e.dataTransfer.files));
+  });
+
+  var _cfg = document.getElementById('app-cfg').dataset;
+  var hasBypass = _cfg.hasBypass === 'true';
+  var maxMb = parseInt(_cfg.maxMb, 10);
+
+  function showToast(msg) {
+    var t = document.createElement('div');
+    t.className = 'toast';
+    t.textContent = msg;
+    document.body.appendChild(t);
+    setTimeout(function () { t.remove(); }, 2800);
+  }
+
+  var _pendingFile = null;
+
+  document.getElementById('pwd-ok').addEventListener('click', function () {
+    var pwd = document.getElementById('pwd-input').value;
+    if (!pwd) return;
+    var okBtn = document.getElementById('pwd-ok');
+    okBtn.disabled = true;
+    var fileToUpload = _pendingFile;
+    fetch('/api/check-password', { method: 'POST', headers: { 'X-Upload-Password': pwd } })
+      .then(function (r) {
+        okBtn.disabled = false;
+        if (r.ok) {
+          document.getElementById('pwd-modal').style.display = 'none';
+          document.getElementById('pwd-input').value = '';
+          _pendingFile = null;
+          if (fileToUpload) { uploadOne(fileToUpload, pwd); }
+        } else {
+          showToast('密码错误');
+          document.getElementById('pwd-input').select();
+        }
+      })
+      .catch(function () { okBtn.disabled = false; showToast('验证失败'); });
+  });
+  document.getElementById('pwd-cancel').addEventListener('click', function () {
+    document.getElementById('pwd-modal').style.display = 'none';
+    document.getElementById('pwd-input').value = '';
+    _pendingFile = null;
+  });
+  document.getElementById('pwd-input').addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') { document.getElementById('pwd-ok').click(); }
+  });
+
+  function askPwd(msg, file) {
+    _pendingFile = file;
+    document.getElementById('pwd-msg').textContent = msg;
+    document.getElementById('pwd-modal').style.display = 'flex';
+    document.getElementById('pwd-input').focus();
+  }
+
+  function uploadFiles(files) {
+    files.forEach(function (f) { uploadOne(f, null); });
+  }
+
+  function uploadOne(file, password) {
+    if (!password && file.size > maxMb * 1024 * 1024) {
+      askPwd('「' + file.name + '」超过 ' + maxMb + 'MB，输入密码可强制上传', file);
+      return;
+    }
+
+    var item = document.createElement('div');
+    item.className = 'prog-item';
+    item.innerHTML = '<div class="prog-header">'
+      + '<span class="prog-name">' + esc(file.name) + '</span>'
+      + '<button class="prog-cancel" title="取消">✕</button>'
+      + '</div>'
+      + '<div class="prog-track"><div class="prog-fill"></div></div>';
+    progList.appendChild(item);
+    var fill = item.querySelector('.prog-fill');
+    var cancelBtn = item.querySelector('.prog-cancel');
+
+    var fd = new FormData();
+    fd.append('files', file);
+
+    var got413 = false;
+    var userCancelled = false;
+
+    function on413() {
+      item.remove();
+      showToast(password ? '密码错误，上传被拒绝' : '「' + file.name + '」超过 ' + maxMb + 'MB 限制');
+    }
+
+    var xhr = new XMLHttpRequest();
+
+    cancelBtn.addEventListener('click', function () {
+      userCancelled = true;
+      xhr.abort();
+    });
+
+    // 响应头一到就检测 413，立刻 abort 停止传输
+    xhr.addEventListener('readystatechange', function () {
+      if (xhr.readyState === 2 && xhr.status === 413) {
+        got413 = true;
+        xhr.abort();
+      }
+    });
+
+    xhr.upload.addEventListener('progress', function (e) {
+      if (e.lengthComputable) fill.style.width = (e.loaded / e.total * 100) + '%';
+    });
+    xhr.addEventListener('abort', function () {
+      if (got413) { on413(); return; }
+      if (userCancelled) { item.remove(); }
+    });
+    xhr.addEventListener('load', function () {
+      cancelBtn.style.display = 'none';
+      if (xhr.status === 413) { on413(); return; }  // fallback
+      fill.style.width = '100%';
+      setTimeout(function () { item.remove(); refresh(); }, 500);
+    });
+    xhr.addEventListener('error', function () {
+      item.remove();
+      showToast(password ? '密码错误，上传被拒绝' : '上传失败，请检查网络');
+    });
+    xhr.open('POST', '/api/upload');
+    if (password) { xhr.setRequestHeader('X-Upload-Password', password); }
+    xhr.send(fd);
+  }
+
+  function refresh() {
+    fetch('/api/files')
+      .then(function (r) { return r.json(); })
+      .then(render)
+      .catch(function () {});
+  }
+
+  function render(files) {
+    countEl.textContent = files.length ? files.length + ' 个文件' : '';
+    if (!files.length) {
+      fileList.innerHTML = '<div class="empty">暂无文件</div>';
+      return;
+    }
+    fileList.innerHTML = files.map(function (f) {
+      return '<div class="file-row">'
+        + '<span class="file-ico">' + fileIcon(f.name) + '</span>'
+        + '<span class="file-name" title="' + esc(f.name) + '">' + esc(f.name) + '</span>'
+        + '<span class="file-size">' + fmtSize(f.size) + '</span>'
+        + '<a class="dl-btn" href="/api/files/' + encodeURIComponent(f.name) + '" download>下载</a>'
+        + '<button class="pin-btn' + (f.pinned ? ' on' : '') + '" data-name="' + esc(f.name) + '">' + (f.pinned ? '已固定' : '固定') + '</button>'
+        + '<button class="del-btn" data-name="' + esc(f.name) + '">删除</button>'
+        + '</div>';
+    }).join('');
+
+    fileList.querySelectorAll('.pin-btn').forEach(function (btn) {
+      btn.addEventListener('click', function () { togglePin(btn); });
+    });
+    fileList.querySelectorAll('.del-btn').forEach(function (btn) {
+      btn.addEventListener('click', function () { delFile(btn.dataset.name); });
+    });
+  }
+
+  function togglePin(btn) {
+    fetch('/api/files/' + encodeURIComponent(btn.dataset.name) + '/pin', { method: 'POST' })
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        btn.classList.toggle('on', data.pinned);
+        btn.textContent = data.pinned ? '已固定' : '固定';
+      });
+  }
+
+  function delFile(name) {
+    if (!confirm('删除「' + name + '」？')) return;
+    fetch('/api/files/' + encodeURIComponent(name), { method: 'DELETE' })
+      .then(refresh);
+  }
+
+  function fmtSize(b) {
+    if (b < 1024) return b + ' B';
+    if (b < 1048576) return (b / 1024).toFixed(1) + ' KB';
+    if (b < 1073741824) return (b / 1048576).toFixed(1) + ' MB';
+    return (b / 1073741824).toFixed(2) + ' GB';
+  }
+
+  function fileIcon(name) {
+    var ext = name.split('.').pop().toLowerCase();
+    var map = {
+      pdf: '📄',
+      jpg: '🖼️', jpeg: '🖼️', png: '🖼️', gif: '🖼️', webp: '🖼️', svg: '🖼️', heic: '🖼️',
+      mp4: '🎬', mov: '🎬', avi: '🎬', mkv: '🎬', wmv: '🎬',
+      mp3: '🎵', wav: '🎵', flac: '🎵', aac: '🎵', m4a: '🎵',
+      zip: '🗜️', rar: '🗜️', '7z': '🗜️', tar: '🗜️', gz: '🗜️',
+      doc: '📝', docx: '📝', xls: '📊', xlsx: '📊', ppt: '📊', pptx: '📊',
+      txt: '📃', md: '📃', json: '📃', xml: '📃', csv: '📃', log: '📃',
+      js: '💻', ts: '💻', py: '💻', java: '💻', cpp: '💻', c: '💻', go: '💻', rs: '💻',
+      apk: '📱', ipa: '📱',
+    };
+    return map[ext] || '📎';
+  }
+
+  function esc(s) {
+    return String(s)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  refresh();
+  setInterval(refresh, 4000);
+})();
+</script>
+</body>
+</html>
