@@ -1,6 +1,10 @@
 # FileDrop
 
 局域网 / 公网文件快传工具。浏览器打开即用，无需安装客户端。
+首先将代码部署到服务器上，然后其余设备既可通过浏览器使用功能。
+
+## 初心
+多设备间使用微信、飞书、网盘传文件非常繁琐，本软件急速解决此痛点，一次部署即可拥有私人快传工具。
 
 ## 功能
 
@@ -16,8 +20,10 @@
 ## 快速开始（本地运行）
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/filedrop.git
+git clone https://github.com/keiran101/FILED_ROP.git
 cd filedrop
+python3 -m venv .venv
+source .venv/bin/activate
 pip install -r requirements.txt
 cp .env.example .env   # 按需修改
 python main.py
@@ -32,7 +38,7 @@ python main.py
 ### 方式一：Docker（推荐）
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/filedrop.git
+git clone https://github.com/keiran101/FILED_ROP.git
 cd filedrop
 cp .env.example .env   # 修改配置
 docker compose up -d
@@ -52,7 +58,7 @@ docker compose up -d --build
 
 ```bash
 # 1. 部署代码
-git clone https://github.com/YOUR_USERNAME/filedrop.git /opt/filedrop
+git clone https://github.com/keiran101/FILED_ROP.git /opt/filedrop
 cd /opt/filedrop
 python3 -m venv .venv
 .venv/bin/pip install -r requirements.txt
@@ -101,13 +107,8 @@ server {
 | `HOST` | `0.0.0.0` | 监听地址 |
 | `PORT` | `1158` | 监听端口 |
 | `UPLOAD_DIR` | `uploads` | 文件存储目录 |
-| `MAX_FILE_SIZE_MB` | `100` | 单文件大小上限（MB） |
+| `MAX_FILE_SIZE_MB` | `500` | 单文件大小上限（MB） |
 | `RATE_LIMIT` | `30` | 每分钟每 IP 最多上传文件数，`0` 不限 |
 | `BYPASS_PASSWORD` | 空（禁用） | 设置后，前端可输入密码绕过大小限制 |
 | `DEVICE_NAME` | `FileDrop` | 界面显示的设备名称 |
 
----
-
-## License
-
-MIT
