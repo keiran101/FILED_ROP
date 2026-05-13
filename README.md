@@ -31,6 +31,23 @@ python main.py #程序入口
 
 ---
 
+## 配置项
+
+所有配置通过 `.env` 文件或环境变量设置，参考。
+
+| 变量 | 默认值 | 说明 |
+|------|--------|------|
+| `HOST` | `0.0.0.0` | 监听地址 |
+| `PORT` | `1158` | 监听端口 |
+| `UPLOAD_DIR` | `uploads` | 文件存储目录 |
+| `MAX_FILE_SIZE_MB` | `500` | 单文件大小上限（MB） |
+| `RATE_LIMIT` | `30` | 每分钟每 IP 最多上传文件数，`0` 不限 |
+| `BYPASS_PASSWORD` | `123` | 设置后，前端可输入密码绕过大小限制 |
+| `DEVICE_NAME` | `FileDrop` | 界面显示的设备名称 |
+
+
+---
+
 ## 服务器部署
 
 ### 方式一：Docker（推荐）
@@ -49,22 +66,6 @@ docker compose up -d
 git pull
 docker compose up -d --build
 ```
-
----
-
-## 配置项
-
-所有配置通过 `.env` 文件或环境变量设置，参考。
-
-| 变量 | 默认值 | 说明 |
-|------|--------|------|
-| `HOST` | `0.0.0.0` | 监听地址 |
-| `PORT` | `1158` | 监听端口 |
-| `UPLOAD_DIR` | `uploads` | 文件存储目录 |
-| `MAX_FILE_SIZE_MB` | `500` | 单文件大小上限（MB） |
-| `RATE_LIMIT` | `30` | 每分钟每 IP 最多上传文件数，`0` 不限 |
-| `BYPASS_PASSWORD` | `123` | 设置后，前端可输入密码绕过大小限制 |
-| `DEVICE_NAME` | `FileDrop` | 界面显示的设备名称 |
 
 ---
 

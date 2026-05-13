@@ -60,6 +60,7 @@ templates = Jinja2Templates(directory="app/templates")
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request):
     return templates.TemplateResponse(
+        request,
         "index.html",
-        {"request": request, "max_mb": settings.max_file_size_mb, "has_bypass": bool(settings.bypass_password)},
+        {"max_mb": settings.max_file_size_mb, "has_bypass": bool(settings.bypass_password)},
     )
