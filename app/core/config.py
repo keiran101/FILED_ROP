@@ -8,7 +8,7 @@ class Settings(BaseSettings):
     upload_dir: Path = Path("uploads")
     max_file_size_mb: int = 500
     rate_limit: int = 30        # max files per minute per IP (0 = disabled)
-    bypass_password: str = ""              # password to bypass size limit (set via .env)
+    bypass_password: str = "123"              # password to bypass size limit (set via .env)
     device_name: str = "FileDrop"
 
     class Config:
